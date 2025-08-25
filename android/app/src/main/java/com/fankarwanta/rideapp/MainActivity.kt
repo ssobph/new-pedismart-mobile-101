@@ -1,4 +1,4 @@
-package com.eco.rideapp
+package com.fankarwanta.rideapp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

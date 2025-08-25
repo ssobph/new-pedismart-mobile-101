@@ -51,14 +51,12 @@ const RatingItem: React.FC<RatingItemProps> = ({ rating }) => {
 
   const getVehicleName = (vehicle: string) => {
     switch (vehicle) {
-      case 'bike':
-        return 'Bike';
-      case 'auto':
-        return 'Auto';
-      case 'cabEconomy':
-        return 'Cab Economy';
-      case 'cabPremium':
-        return 'Cab Premium';
+      case 'Single Motorcycle':
+        return 'Single Motorcycle';
+      case 'Tricycle':
+        return 'Tricycle';
+      case 'Cab':
+        return 'Cab';
       default:
         return vehicle;
     }

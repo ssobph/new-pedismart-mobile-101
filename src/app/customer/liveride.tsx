@@ -26,6 +26,8 @@ const LiveRide = () => {
   const { emit, on, off } = useWS();
   const [rideData, setRideData] = useState<any>(null);
   const [riderCoords, setriderCoords] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const route = useRoute() as any;
   const params = route?.params || {};
   const id = params.id;
@@ -49,22 +51,33 @@ const LiveRide = () => {
       emit("subscribeRide", id);
 
       on("rideData", (data) => {
+        console.log('Received ride data:', data);
         setRideData(data);
+        setIsLoading(false);
+        setError(null);
         if (data?.status === "SEARCHING_FOR_RIDER") {
           emit("searchrider", id);
         }
       });
 
       on("rideUpdate", (data) => {
+        console.log('Received ride update:', data);
         setRideData(data);
+        setError(null);
       });
 
       on("rideCanceled", (error) => {
+        console.log('Ride canceled:', error);
+        setError('Ride was canceled');
+        setIsLoading(false);
         resetAndNavigate("/customer/home");
         Alert.alert("Ride Canceled");
       });
 
       on("error", (error) => {
+        console.error('Ride error:', error);
+        setError('Failed to load ride data');
+        setIsLoading(false);
         resetAndNavigate("/customer/home");
         Alert.alert("Oh Dang! No Riders Found");
       });
@@ -80,43 +93,56 @@ const LiveRide = () => {
 
   useEffect(() => {
     if (rideData?.rider?._id) {
-      emit("subscribeToriderLocation", rideData?.rider?._id);
+      console.log('Subscribing to rider location:', rideData.rider._id);
+      emit("subscribeToriderLocation", rideData.rider._id);
       on("riderLocationUpdate", (data) => {
-        setriderCoords(data?.coords);
+        console.log('Received rider location update:', data);
+        if (data?.coords) {
+          setriderCoords(data.coords);
+        }
       });
     }
 
     return () => {
       off("riderLocationUpdate");
     };
-  }, [rideData]);
+  }, [rideData?.rider?._id]);
 
   return (
     <View style={rideStyles.container}>
       <StatusBar style="light" backgroundColor="orange" translucent={false} />
 
-      {rideData && (
+      {rideData ? (
         <LiveTrackingMap
           height={mapHeight}
-          status={rideData?.status}
+          status={rideData?.status || 'UNKNOWN'}
           drop={{
-            latitude: parseFloat(rideData?.drop?.latitude),
-            longitude: parseFloat(rideData?.drop?.longitude),
+            latitude: rideData?.drop?.latitude ? parseFloat(rideData.drop.latitude) : null,
+            longitude: rideData?.drop?.longitude ? parseFloat(rideData.drop.longitude) : null,
           }}
           pickup={{
-            latitude: parseFloat(rideData?.pickup?.latitude),
-            longitude: parseFloat(rideData?.pickup?.longitude),
+            latitude: rideData?.pickup?.latitude ? parseFloat(rideData.pickup.latitude) : null,
+            longitude: rideData?.pickup?.longitude ? parseFloat(rideData.pickup.longitude) : null,
           }}
           rider={
-            riderCoords
+            riderCoords && riderCoords.latitude && riderCoords.longitude
               ? {
                   latitude: riderCoords.latitude,
                   longitude: riderCoords.longitude,
-                  heading: riderCoords.heading,
+                  heading: riderCoords.heading || 0,
                 }
-              : {}
+              : null
           }
         />
+      ) : isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
+          <ActivityIndicator size="large" color="orange" />
+          <CustomText fontSize={14} style={{ marginTop: 10, color: '#666' }}>Loading ride data...</CustomText>
+        </View>
+      ) : (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
+          <CustomText fontSize={14} style={{ color: '#666' }}>No ride data available</CustomText>
+        </View>
       )}
 
       {rideData ? (
@@ -140,12 +166,19 @@ const LiveRide = () => {
             )}
           </BottomSheetScrollView>
         </BottomSheet>
-      ) : (
+      ) : isLoading ? (
         <View
           style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
         >
           <CustomText variant="h8">Fetching Information...</CustomText>
-          <ActivityIndicator color="black" size="small" />
+          <ActivityIndicator color="orange" size="large" />
+        </View>
+      ) : (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <CustomText variant="h8">No ride data available</CustomText>
+          {error && <CustomText fontSize={12} style={{ color: 'red', marginTop: 10 }}>{error}</CustomText>}
         </View>
       )}
     </View>

@@ -10,12 +10,17 @@ interface coords {
 }
 
 export const createRide = async (payload: {
-  vehicle: "bike" | "auto" | "cabEconomy" | "cabPremium";
+  vehicle: "Single Motorcycle" | "Tricycle" | "Cab";
   pickup: coords;
   drop: coords;
 }) => {
   try {
+    console.log("Sending ride creation request with payload:", JSON.stringify(payload, null, 2));
+    
     const res = await api.post(`/ride/create`, payload);
+    
+    console.log("Ride created successfully:", res.data);
+    
     router?.navigate({
       pathname: "/customer/liveride",
       params: {
@@ -23,8 +28,24 @@ export const createRide = async (payload: {
       },
     });
   } catch (error: any) {
-    Alert.alert("Oh! Dang there was an error");
-    console.log("Error:Create Ride ", error);
+    console.error("Error:Create Ride ", error);
+    
+    // Enhanced error logging
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", error.response.data);
+      console.error("Response headers:", error.response.headers);
+      
+      // Show specific error message from server if available
+      const errorMessage = error.response.data?.message || error.response.data?.error || "Failed to create ride";
+      Alert.alert("Error", errorMessage);
+    } else if (error.request) {
+      console.error("Request error:", error.request);
+      Alert.alert("Network Error", "Unable to connect to server. Please check your internet connection.");
+    } else {
+      console.error("Error message:", error.message);
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+    }
   }
 };
 

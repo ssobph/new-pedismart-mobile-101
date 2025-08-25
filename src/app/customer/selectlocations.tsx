@@ -22,6 +22,7 @@ import {
   getLatLong,
   getPlacesSuggestions,
 } from "@/utils/mapUtils";
+import { PIN_LOCATIONS } from "@/utils/LocationConfig";
 import { locationStyles } from "@/styles/locationStyles";
 import LocationItem from "@/components/customer/LocationItem";
 import MapPickerModal from "@/components/customer/MapPickerModal";
@@ -56,6 +57,32 @@ export default function LocationSelection() {
         setPickupCoords(data);
         setPickup(data?.address);
       }
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    const categoryColors = {
+      'San Miguel': '#FF6B35',
+      'San Ildefonso': '#007AFF', 
+      'San Rafael': '#34C759'
+    };
+    return categoryColors[category as keyof typeof categoryColors] || '#FF6B35';
+  };
+
+  const handlePinLocationSelect = (pinLocation: any) => {
+    const locationData = {
+      latitude: pinLocation.latitude,
+      longitude: pinLocation.longitude,
+      address: pinLocation.address
+    };
+
+    if (focusedInput === "drop") {
+      setDrop(pinLocation.address);
+      setDropCoords(locationData);
+    } else {
+      setLocation(locationData);
+      setPickupCoords(locationData);
+      setPickup(pinLocation.address);
     }
   };
 
@@ -176,21 +203,76 @@ export default function LocationSelection() {
         initialNumToRender={5}
         windowSize={5}
         ListFooterComponent={
-          <TouchableOpacity
-            style={[commonStyles.flexRow, locationStyles.container]}
-            onPress={() => {
-              setModalTitle(focusedInput);
-              setMapModalVisible(true);
-            }}
-          >
-            <Image
-              source={require("@/assets/icons/map_pin.png")}
-              style={uiStyles.mapPinIcon}
-            />
-            <CustomText fontFamily="Medium" fontSize={12}>
-              Select from Map
-            </CustomText>
-          </TouchableOpacity>
+          <View>
+            <TouchableOpacity
+              style={[commonStyles.flexRow, locationStyles.container]}
+              onPress={() => {
+                setModalTitle(focusedInput);
+                setMapModalVisible(true);
+              }}
+            >
+              <Image
+                source={require("@/assets/icons/map_pin.png")}
+                style={uiStyles.mapPinIcon}
+              />
+              <CustomText fontFamily="Medium" fontSize={12}>
+                Select from Map
+              </CustomText>
+            </TouchableOpacity>
+            
+            {/* Most Picked Locations Section */}
+            <View style={{ marginTop: 20, paddingHorizontal: 16 }}>
+              <CustomText
+                fontFamily="Medium"
+                fontSize={14}
+                style={{ color: Colors.text, marginBottom: 12 }}
+              >
+                Most Picked Locations
+              </CustomText>
+              
+              {PIN_LOCATIONS.map((pinLocation) => (
+                <TouchableOpacity
+                  key={pinLocation.id}
+                  style={[
+                    commonStyles.flexRow,
+                    {
+                      backgroundColor: '#f8f9fa',
+                      padding: 12,
+                      marginBottom: 8,
+                      borderRadius: 8,
+                      borderLeftWidth: 3,
+                      borderLeftColor: getCategoryColor(pinLocation.category),
+                    }
+                  ]}
+                  onPress={() => handlePinLocationSelect(pinLocation)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <CustomText fontFamily="Medium" fontSize={13} style={{ color: Colors.text }}>
+                      {pinLocation.name}
+                    </CustomText>
+                    <CustomText 
+                      fontFamily="Regular" 
+                      fontSize={11} 
+                      style={{ color: '#666', marginTop: 2 }}
+                    >
+                      {pinLocation.category} • {pinLocation.description}
+                    </CustomText>
+                  </View>
+                  <View style={{
+                    backgroundColor: getCategoryColor(pinLocation.category),
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 12,
+                    alignSelf: 'center'
+                  }}>
+                    <CustomText fontFamily="Medium" fontSize={10} style={{ color: 'white' }}>
+                      {pinLocation.category}
+                    </CustomText>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         }
       />
 
@@ -203,8 +285,8 @@ export default function LocationSelection() {
                 : pickupCoords?.latitude,
             longitude:
               focusedInput === "drop"
-                ? dropCoords?.logitude
-                : pickupCoords?.logitude,
+                ? dropCoords?.longitude
+                : pickupCoords?.longitude,
             address: focusedInput === "drop" ? drop : pickup,
           }}
           title={modalTitle}

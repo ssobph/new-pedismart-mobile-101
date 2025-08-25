@@ -6,7 +6,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { RFValue } from "react-native-responsive-fontsize";
 import { mapStyles } from "@/styles/mapStyles";
 
-const apiKey = process.env.EXPO_PUBLIC_MAP_API_KEY || "";
 
 const RoutesMap: FC<{ drop: any; pickup: any }> = ({ drop, pickup }) => {
   const mapRef = useRef<WebViewMapRef>(null);
@@ -30,7 +29,10 @@ const RoutesMap: FC<{ drop: any; pickup: any }> = ({ drop, pickup }) => {
     if (coordinates.length === 0) return;
 
     try {
-      mapRef.current?.fitToCoordinates(coordinates);
+      mapRef.current?.fitToCoordinates(coordinates, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
     } catch (error) {
       console.log("Error fitting");
     }

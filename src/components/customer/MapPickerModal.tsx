@@ -7,7 +7,7 @@ import {
   FlatList,
   Image,
 } from "react-native";
-import React, { FC, memo, useEffect, useRef, useState } from "react";
+import React, { FC, memo, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { modalStyles } from "@/styles/modalStyles";
 import WebViewMap, { WebViewMapRef } from "@/components/shared/WebViewMap";
 import { useUserStore } from "@/store/userStore";
@@ -48,16 +48,33 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
   const [address, setAddress] = useState("");
   const [region, setRegion] = useState<any>(null);
   const [locations, setLocations] = useState([]);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const textInputRef = useRef<TextInput>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const addressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchLocation = async (query: string) => {
-    if (query?.length > 4) {
-      const data = await getPlacesSuggestions(query);
-      setLocations(data);
+  const fetchLocation = useCallback(async (query: string) => {
+    if (query?.length > 3) {
+      try {
+        const data = await getPlacesSuggestions(query);
+        setLocations(data || []);
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+        setLocations([]);
+      }
     } else {
       setLocations([]);
     }
-  };
+  }, []);
+
+  const debouncedFetchLocation = useCallback((query: string) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      fetchLocation(query);
+    }, 300);
+  }, [fetchLocation]);
 
   useEffect(() => {
     if (selectedLocation?.latitude) {
@@ -78,20 +95,35 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
     }
   }, [selectedLocation, mapRef]);
 
-  const addLocation = async (place_id: string) => {
-    const data = await getLatLong(place_id);
-    if (data) {
-      setRegion({
-        latitude: data.latitude,
-        longitude: data.longitude,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5,
-      });
-      setAddress(data.address);
+  const addLocation = useCallback(async (place_id: string) => {
+    try {
+      setIsLoadingAddress(true);
+      const data = await getLatLong(place_id);
+      if (data) {
+        const newRegion = {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        setAddress(data.address);
+        
+        // Animate map to new location
+        mapRef?.current?.fitToCoordinates([{
+          latitude: data.latitude,
+          longitude: data.longitude,
+        }]);
+      }
+    } catch (error) {
+      console.error('Error adding location:', error);
+    } finally {
+      setIsLoadingAddress(false);
+      textInputRef.current?.blur();
+      setText("");
+      setLocations([]);
     }
-    textInputRef.current?.blur();
-    setText("");
-  };
+  }, []);
 
   const renderLocations = ({ item }: any) => {
     return (
@@ -99,7 +131,7 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
     );
   };
 
-  const handleRegionChangeComplete = async (newRegion: any) => {
+  const handleRegionChangeComplete = useCallback(async (newRegion: any) => {
     try {
       // Only update if the region has changed significantly (more than ~10 meters)
       const threshold = 0.0001;
@@ -110,30 +142,83 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
       }
       
       setRegion(newRegion);
+      setIsLoadingAddress(true);
+      
+      // Clear previous timeout
+      if (addressTimeoutRef.current) {
+        clearTimeout(addressTimeoutRef.current);
+      }
       
       // Debounce address lookup to prevent excessive API calls
-      const address = await reverseGeocode(
-        newRegion?.latitude,
-        newRegion?.longitude
-      );
-      setAddress(address);
+      addressTimeoutRef.current = setTimeout(async () => {
+        try {
+          const address = await reverseGeocode(
+            newRegion?.latitude,
+            newRegion?.longitude
+          );
+          setAddress(address || "Address not found");
+        } catch (error) {
+          console.error('Error getting address:', error);
+          setAddress("Unable to get address");
+        } finally {
+          setIsLoadingAddress(false);
+        }
+      }, 500);
     } catch (error) {
-      console.log(error);
+      console.error('Error in region change:', error);
+      setIsLoadingAddress(false);
     }
-  };
+  }, [region]);
 
-  const handleGpsButtonPress = async () => {
+  const handleGpsButtonPress = useCallback(async () => {
     try {
+      setIsLoadingAddress(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
-        mapRef.current?.getCurrentLocation();
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        
+        const newRegion = {
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        
+        setRegion(newRegion);
+        mapRef.current?.fitToCoordinates([{
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+        }]);
+        
+        // Get address for current location
+        const address = await reverseGeocode(
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude
+        );
+        setAddress(address || "Current location");
       } else {
         console.log("Location permission denied");
       }
     } catch (error) {
       console.error("Error getting location:", error);
+    } finally {
+      setIsLoadingAddress(false);
     }
-  };
+  }, []);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      if (addressTimeoutRef.current) {
+        clearTimeout(addressTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <Modal
@@ -159,7 +244,7 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
             value={text}
             onChangeText={(e) => {
               setText(e);
-              fetchLocation(e);
+              debouncedFetchLocation(e);
             }}
           />
         </View>
@@ -227,19 +312,22 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
 
             <View style={modalStyles?.footerContainer}>
               <Text style={modalStyles.addressText} numberOfLines={2}>
-                {address === "" ? "Getting address..." : address}
+                {isLoadingAddress ? "Getting address..." : (address === "" ? "Tap and drag to select location" : address)}
               </Text>
               <View style={modalStyles.buttonContainer}>
                 <TouchableOpacity
                   style={modalStyles.button}
+                  disabled={!region?.latitude || !region?.longitude || isLoadingAddress}
                   onPress={() => {
-                    onSelectLocation({
-                      type: title,
-                      latitude: region?.latitude,
-                      longitude: region?.longitude,
-                      address: address,
-                    });
-                    onClose();
+                    if (region?.latitude && region?.longitude && address) {
+                      onSelectLocation({
+                        type: title,
+                        latitude: region.latitude,
+                        longitude: region.longitude,
+                        address: address,
+                      });
+                      onClose();
+                    }
                   }}
                 >
                   <Text style={modalStyles.buttonText}>Set Address</Text>

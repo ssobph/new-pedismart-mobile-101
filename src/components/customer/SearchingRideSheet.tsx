@@ -9,7 +9,7 @@ import { vehicleIcons } from "@/utils/mapUtils";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
-type VehicleType = "bike" | "auto" | "cabEconomy" | "cabPremium";
+type VehicleType = "Single Motorcycle" | "Tricycle" | "Cab";
 
 interface RideItem {
   vehicle?: VehicleType;

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from "react-native";
 import React, { memo, useCallback, useMemo, useState } from "react";
 import { useRoute } from "@react-navigation/native";
 import { useUserStore } from "@/store/userStore";
@@ -29,37 +29,29 @@ const RideBooking = () => {
   const rideOptions = useMemo(
     () => [
       {
-        type: "Bike",
+        type: "Single Motorcycle",
         seats: 1,
         time: "1 min",
         dropTime: "4:28 pm",
-        price: farePrices?.bike,
+        price: farePrices?.["Single Motorcycle"],
         isFastest: true,
         icon: require("@/assets/icons/bike.png"),
       },
       {
-        type: "Auto",
+        type: "Tricycle",
         seats: 3,
         time: "1 min",
         dropTime: "4:30 pm",
-        price: farePrices.auto,
+        price: farePrices["Tricycle"],
         icon: require("@/assets/icons/auto.png"),
       },
       {
-        type: "Cab Economy",
+        type: "Cab",
         seats: 4,
         time: "1 min",
         dropTime: "4:28 pm",
-        price: farePrices.cabEconomy,
+        price: farePrices["Cab"],
         icon: require("@/assets/icons/cab.png"),
-      },
-      {
-        type: "Cab Premium",
-        seats: 4,
-        time: "1 min",
-        dropTime: "4:30 pm",
-        price: farePrices.cabPremium,
-        icon: require("@/assets/icons/cab_premium.png"),
       },
     ],
     [farePrices]
@@ -72,26 +64,70 @@ const RideBooking = () => {
   const handleRideBooking = async () => {
     setLoading(true);
 
-    await createRide({
-      vehicle:
-        selectedOption === "Cab Economy"
-          ? "cabEconomy"
-          : selectedOption === "Cab Premium"
-          ? "cabPremium"
-          : selectedOption === "Bike"
-          ? "bike"
-          : "auto",
-      drop: {
-        latitude: parseFloat(item.drop_latitude),
-        longitude: parseFloat(item.drop_longitude),
-        address: item?.drop_address,
-      },
-      pickup: {
-        latitude: parseFloat(location.latitude),
-        longitude: parseFloat(location.longitude),
-        address: location.address,
-      },
-    });
+    try {
+      // Validate required data before sending
+      if (!item?.drop_latitude || !item?.drop_longitude || !item?.drop_address) {
+        Alert.alert("Error", "Drop location information is missing");
+        setLoading(false);
+        return;
+      }
+
+      if (!location?.latitude || !location?.longitude || !location?.address) {
+        Alert.alert("Error", "Pickup location information is missing");
+        setLoading(false);
+        return;
+      }
+
+      // Convert vehicle type
+      const vehicleType = selectedOption === "Single Motorcycle"
+        ? "Single Motorcycle"
+        : selectedOption === "Tricycle"
+        ? "Tricycle"
+        : "Cab";
+
+      // Ensure coordinates are valid numbers
+      const dropLat = Number(item.drop_latitude);
+      const dropLng = Number(item.drop_longitude);
+      const pickupLat = Number(location.latitude);
+      const pickupLng = Number(location.longitude);
+
+      if (isNaN(dropLat) || isNaN(dropLng) || isNaN(pickupLat) || isNaN(pickupLng)) {
+        Alert.alert("Error", "Invalid location coordinates");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Creating ride with payload:", {
+        vehicle: vehicleType,
+        drop: {
+          latitude: dropLat,
+          longitude: dropLng,
+          address: item.drop_address,
+        },
+        pickup: {
+          latitude: pickupLat,
+          longitude: pickupLng,
+          address: location.address,
+        },
+      });
+
+      await createRide({
+        vehicle: vehicleType,
+        drop: {
+          latitude: dropLat,
+          longitude: dropLng,
+          address: item.drop_address,
+        },
+        pickup: {
+          latitude: pickupLat,
+          longitude: pickupLng,
+          address: location.address,
+        },
+      });
+    } catch (error) {
+      console.error("Error in handleRideBooking:", error);
+      Alert.alert("Error", "Failed to create ride. Please try again.");
+    }
 
     setLoading(false);
   };

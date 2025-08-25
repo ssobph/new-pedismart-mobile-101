@@ -1,8 +1,8 @@
 import { Platform } from "react-native";
 
-// Production deployment - Render.com
-//export const BASE_URL = 'https://ecoride-server-deploy.onrender.com';
-//export const SOCKET_URL = 'wss://ecoride-server-deploy.onrender.com';
+// Production deployment - Render.com (ACTIVE FOR APK BUILD)
+export const BASE_URL = 'https://ecoride-server-deploy104.onrender.com';
+export const SOCKET_URL = 'wss://ecoride-server-deploy104.onrender.com';
 
 // Alternative configurations (uncomment as needed)
 // For local testing
@@ -21,6 +21,6 @@ import { Platform } from "react-native";
 // export const BASE_URL = 'http://192.168.1.X:3000';
 // export const SOCKET_URL = 'ws://192.168.1.X:3000';
 
-// Previous active configuration
- export const BASE_URL = 'http://192.168.100.171:3000';
- export const SOCKET_URL = 'ws://192.168.100.171:3000';
+// ( CAFE WIFI - ALOCLYDE )
+// export const BASE_URL = 'http://192.168.100.171:3000';
+// export const SOCKET_URL = 'ws://192.168.100.171:3000';

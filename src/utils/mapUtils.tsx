@@ -62,7 +62,7 @@ export const getPlacesSuggestions = async (query: string) => {
                 input: query,
                 location: `${location?.latitude},${location?.longitude}`,
                 radius: 50000,
-                components: 'country:IN',
+                components: 'country:PH',
                 key: process.env.EXPO_PUBLIC_MAP_API_KEY,
             }
         }
@@ -89,10 +89,9 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
 
 export const calculateFare = (distance: number) => {
     const rateStructure = {
-        bike: { baseFare: 10, perKmRate: 5, minimumFare: 25 },
-        auto: { baseFare: 15, perKmRate: 7, minimumFare: 30 },
-        cabEconomy: { baseFare: 20, perKmRate: 10, minimumFare: 50 },
-        cabPremium: { baseFare: 30, perKmRate: 15, minimumFare: 70 },
+        "Single Motorcycle": { baseFare: 10, perKmRate: 5, minimumFare: 25 },
+        "Tricycle": { baseFare: 15, perKmRate: 7, minimumFare: 30 },
+        "Cab": { baseFare: 20, perKmRate: 10, minimumFare: 50 },
     };
 
     const fareCalculation = (baseFare: number, perKmRate: number, minimumFare: number) => {
@@ -101,10 +100,9 @@ export const calculateFare = (distance: number) => {
     };
 
     return {
-        bike: fareCalculation(rateStructure.bike.baseFare, rateStructure.bike.perKmRate, rateStructure.bike.minimumFare),
-        auto: fareCalculation(rateStructure.auto.baseFare, rateStructure.auto.perKmRate, rateStructure.auto.minimumFare),
-        cabEconomy: fareCalculation(rateStructure.cabEconomy.baseFare, rateStructure.cabEconomy.perKmRate, rateStructure.cabEconomy.minimumFare),
-        cabPremium: fareCalculation(rateStructure.cabPremium.baseFare, rateStructure.cabPremium.perKmRate, rateStructure.cabPremium.minimumFare),
+        "Single Motorcycle": fareCalculation(rateStructure["Single Motorcycle"].baseFare, rateStructure["Single Motorcycle"].perKmRate, rateStructure["Single Motorcycle"].minimumFare),
+        "Tricycle": fareCalculation(rateStructure["Tricycle"].baseFare, rateStructure["Tricycle"].perKmRate, rateStructure["Tricycle"].minimumFare),
+        "Cab": fareCalculation(rateStructure["Cab"].baseFare, rateStructure["Cab"].perKmRate, rateStructure["Cab"].minimumFare),
     };
 }
 
@@ -159,10 +157,9 @@ export const getPoints = (places: any) => {
     return quadraticBezierCurve(p1, p2, controlPoint, 100);
 };
 
-export const vehicleIcons: Record<'bike' | 'auto' | 'cabEconomy' | 'cabPremium', { icon: any }> = {
-    bike: { icon: require('@/assets/icons/bike.png') },
-    auto: { icon: require('@/assets/icons/auto.png') },
-    cabEconomy: { icon: require('@/assets/icons/cab.png') },
-    cabPremium: { icon: require('@/assets/icons/cab_premium.png') },
+export const vehicleIcons: Record<'Single Motorcycle' | 'Tricycle' | 'Cab', { icon: any }> = {
+    "Single Motorcycle": { icon: require('@/assets/icons/bike.png') },
+    "Tricycle": { icon: require('@/assets/icons/auto.png') },
+    "Cab": { icon: require('@/assets/icons/cab.png') },
   };
   

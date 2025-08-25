@@ -1,10 +1,12 @@
 import React, { FC, useState, useEffect } from 'react';
-import { View, Modal, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { View, Modal, TouchableOpacity, StyleSheet, Image, ScrollView, Linking, Alert, Dimensions, ActivityIndicator } from 'react-native';
+import { Ionicons, MaterialIcons, FontAwesome5, AntDesign } from '@expo/vector-icons';
 import { RFValue } from 'react-native-responsive-fontsize';
 import CustomText from '../shared/CustomText';
 import { Colors } from '@/utils/Constants';
 import RiderRatingCard from './RiderRatingCard';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface DriverDetailsModalProps {
   visible: boolean;
@@ -18,31 +20,68 @@ const DriverDetailsModal: FC<DriverDetailsModalProps> = ({
   onClose,
 }) => {
   const [showRatings, setShowRatings] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>("");
+  const [imageLoading, setImageLoading] = useState(true);
+  const [fullImageLoading, setFullImageLoading] = useState(true);
+  
+  // Set initial loading state when driverDetails changes
+  useEffect(() => {
+    if (driverDetails?.photo) {
+      setImageLoading(true);
+    } else {
+      setImageLoading(false);
+    }
+  }, [driverDetails?.photo]);
+  
+  // Reset loading state when modal becomes visible
+  useEffect(() => {
+    if (visible && driverDetails?.photo) {
+      setImageLoading(true);
+    }
+  }, [visible, driverDetails?.photo]);
 
   if (!driverDetails) return null;
-
-  const getVehicleTypeLabel = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'bike':
-        return 'Motorcycle';
-      case 'auto':
-        return 'Tuk-Tuk';
-      case 'cab':
-        return 'Taxi';
-      default:
-        return 'Vehicle';
+  
+  const openImageViewer = (imageUrl: string) => {
+    if (imageUrl) {
+      setSelectedImage(imageUrl);
+      setImageViewerVisible(true);
     }
   };
 
-  const getVehicleIcon = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'bike':
-        return require('@/assets/icons/bike_marker.png');
-      case 'auto':
-        return require('@/assets/icons/auto_marker.png');
-      case 'cab':
+  const closeImageViewer = () => {
+    setImageViewerVisible(false);
+    setSelectedImage("");
+  };
+
+  const getVehicleImage = (type: string) => {
+    switch (type) {
+      case 'Single Motorcycle':
+        return require('@/assets/images/bike_marker.png');
+      case 'Tricycle':
+        return require('@/assets/images/auto_marker.png');
+      case 'Cab':
+        return require('@/assets/images/cab_marker.png');
       default:
-        return require('@/assets/icons/cab_marker.png');
+        return require('@/assets/images/bike_marker.png');
+    }
+  };
+
+  const handleCallDriver = async () => {
+    const phoneNumber = driverDetails.phone;
+    if (phoneNumber) {
+      const phoneUrl = `tel:${phoneNumber}`;
+      try {
+        const supported = await Linking.canOpenURL(phoneUrl);
+        if (supported) {
+          await Linking.openURL(phoneUrl);
+        } else {
+          Alert.alert('Error', 'Phone calls are not supported on this device');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to make phone call');
+      }
     }
   };
 
@@ -54,93 +93,216 @@ const DriverDetailsModal: FC<DriverDetailsModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <ScrollView style={styles.modalContent}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={RFValue(24)} color={Colors.text} />
-          </TouchableOpacity>
-
-          <View style={styles.headerSection}>
-            <Image
-              source={getVehicleIcon(driverDetails.vehicleType)}
-              style={styles.vehicleIcon}
-            />
-            <CustomText fontFamily="SemiBold" fontSize={18} style={styles.title}>
-              {getVehicleTypeLabel(driverDetails.vehicleType)} Driver
+        <View style={styles.modalContent}>
+          {/* Header with close button */}
+          <View style={styles.header}>
+            <CustomText fontFamily="Bold" fontSize={20} style={styles.headerTitle}>
+              Driver Details
             </CustomText>
-          </View>
-
-          <View style={styles.driverInfoSection}>
-            <View style={styles.infoRow}>
-              <FontAwesome5 name="user" size={RFValue(16)} color={Colors.primary} style={styles.icon} />
-              <View>
-                <CustomText fontFamily="Medium" fontSize={16} style={styles.label}>
-                  Driver Name
-                </CustomText>
-                <CustomText fontSize={14} style={styles.value}>
-                  {driverDetails.firstName} {driverDetails.lastName}
-                </CustomText>
-              </View>
-            </View>
-
-            <View style={styles.infoRow}>
-              <FontAwesome5 name="phone-alt" size={RFValue(16)} color={Colors.primary} style={styles.icon} />
-              <View>
-                <CustomText fontFamily="Medium" fontSize={16} style={styles.label}>
-                  Contact Number
-                </CustomText>
-                <CustomText fontSize={14} style={styles.value}>
-                  {driverDetails.phone}
-                </CustomText>
-              </View>
-            </View>
-
-            <View style={styles.infoRow}>
-              <FontAwesome5 name="id-card" size={RFValue(16)} color={Colors.primary} style={styles.icon} />
-              <View>
-                <CustomText fontFamily="Medium" fontSize={16} style={styles.label}>
-                  License ID #
-                </CustomText>
-                <CustomText fontSize={14} style={styles.value}>
-                  {driverDetails.licenseId || 'Not available'}
-                </CustomText>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              style={styles.ratingsButton}
-              onPress={() => setShowRatings(!showRatings)}
-            >
-              <View style={styles.ratingsButtonContent}>
-                <MaterialIcons name="star-rate" size={RFValue(18)} color={Colors.primary} />
-                <CustomText fontFamily="Medium" fontSize={16} style={styles.ratingsButtonText}>
-                  View Driver Ratings
-                </CustomText>
-              </View>
-              <Ionicons 
-                name={showRatings ? "chevron-up" : "chevron-down"} 
-                size={RFValue(16)} 
-                color={Colors.primary} 
-              />
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Ionicons name="close" size={RFValue(24)} color={Colors.text} />
             </TouchableOpacity>
           </View>
 
-          {showRatings && driverDetails._id && (
-            <View style={styles.ratingsContainer}>
-              <RiderRatingCard 
-                riderId={driverDetails._id} 
-                riderName={`${driverDetails.firstName} ${driverDetails.lastName}`}
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollContent}>
+            {/* Driver Profile Section */}
+            <View style={styles.profileSection}>
+              <View style={styles.driverImageContainer}>
+                {driverDetails.photo ? (
+                  <TouchableOpacity onPress={() => openImageViewer(driverDetails.photo)}>
+                    <View style={styles.imageWrapper}>
+                      <Image
+                        source={{ uri: driverDetails.photo }}
+                        style={styles.driverImage}
+                        onLoadStart={() => setImageLoading(true)}
+                        onLoad={() => setImageLoading(false)}
+                        onError={() => {
+                          console.log('Error loading profile image');
+                          setImageLoading(false);
+                        }}
+                      />
+                      {imageLoading && (
+                        <View style={styles.loaderContainer}>
+                          <ActivityIndicator size="small" color={Colors.primary} />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.driverImagePlaceholder}>
+                    <Ionicons name="person" size={RFValue(40)} color="#FFFFFF" />
+                  </View>
+                )}
+                <View style={styles.onlineIndicator} />
+              </View>
+              
+              <View style={styles.driverBasicInfo}>
+                <CustomText fontFamily="Bold" fontSize={18} style={styles.driverName}>
+                  {driverDetails.firstName} {driverDetails.lastName}
+                </CustomText>
+                
+                {driverDetails.averageRating && (
+                  <View style={styles.ratingContainer}>
+                    <AntDesign name="star" size={RFValue(16)} color="#FFD700" />
+                    <CustomText fontFamily="Medium" fontSize={14} style={styles.ratingText}>
+                      {parseFloat(driverDetails.averageRating).toFixed(1)}
+                    </CustomText>
+                    {driverDetails.totalRatings && (
+                      <CustomText fontSize={12} style={styles.experienceText}>
+                        • {driverDetails.totalRatings} reviews
+                      </CustomText>
+                    )}
+                  </View>
+                )}
+
+                <View style={styles.statusBadge}>
+                  <CustomText fontFamily="Medium" fontSize={12} style={styles.statusText}>
+                    Available
+                  </CustomText>
+                </View>
+              </View>
+            </View>
+
+            {/* Vehicle Information */}
+            {driverDetails.vehicleType && (
+              <View style={styles.vehicleSection}>
+                <View style={styles.sectionHeader}>
+                  <FontAwesome5 name="car" size={RFValue(16)} color={Colors.primary} />
+                  <CustomText fontFamily="SemiBold" fontSize={16} style={styles.sectionTitle}>
+                    Vehicle Information
+                  </CustomText>
+                </View>
+                
+                <View style={styles.vehicleCard}>
+                  <Image
+                    source={getVehicleImage(driverDetails.vehicleType)}
+                    style={styles.vehicleImage}
+                  />
+                  <View style={styles.vehicleDetails}>
+                    <CustomText fontFamily="SemiBold" fontSize={16} style={styles.vehicleType}>
+                      {driverDetails.vehicleType}
+                    </CustomText>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Contact Information */}
+            <View style={styles.contactSection}>
+              <View style={styles.sectionHeader}>
+                <FontAwesome5 name="address-card" size={RFValue(16)} color={Colors.primary} />
+                <CustomText fontFamily="SemiBold" fontSize={16} style={styles.sectionTitle}>
+                  Contact Information
+                </CustomText>
+              </View>
+              
+              <View style={styles.contactCard}>
+                <View style={styles.contactItem}>
+                  <FontAwesome5 name="phone-alt" size={RFValue(14)} color={Colors.primary} />
+                  <View style={styles.contactInfo}>
+                    <CustomText fontSize={12} style={styles.contactLabel}>Phone Number</CustomText>
+                    <CustomText fontFamily="Medium" fontSize={14} style={styles.contactValue}>
+                      {driverDetails.phone}
+                    </CustomText>
+                  </View>
+                </View>
+
+                {driverDetails.licenseId && (
+                  <View style={styles.contactItem}>
+                    <FontAwesome5 name="id-card" size={RFValue(14)} color={Colors.primary} />
+                    <View style={styles.contactInfo}>
+                      <CustomText fontSize={12} style={styles.contactLabel}>License ID</CustomText>
+                      <CustomText fontFamily="Medium" fontSize={14} style={styles.contactValue}>
+                        {driverDetails.licenseId}
+                      </CustomText>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Ratings Section */}
+            <View style={styles.ratingsSection}>
+              <TouchableOpacity 
+                style={styles.ratingsToggle}
+                onPress={() => setShowRatings(!showRatings)}
+              >
+                <View style={styles.ratingsToggleContent}>
+                  <MaterialIcons name="star-rate" size={RFValue(18)} color={Colors.primary} />
+                  <CustomText fontFamily="SemiBold" fontSize={16} style={styles.ratingsToggleText}>
+                    Driver Reviews & Ratings
+                  </CustomText>
+                </View>
+                <Ionicons 
+                  name={showRatings ? "chevron-up" : "chevron-down"} 
+                  size={RFValue(18)} 
+                  color={Colors.primary} 
+                />
+              </TouchableOpacity>
+
+              {showRatings && driverDetails._id && (
+                <View style={styles.ratingsContent}>
+                  <RiderRatingCard 
+                    riderId={driverDetails._id} 
+                    riderName={`${driverDetails.firstName} ${driverDetails.lastName}`}
+                  />
+                </View>
+              )}
+            </View>
+          </ScrollView>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
+              <Ionicons name="call" size={RFValue(18)} color="#fff" />
+              <CustomText fontFamily="SemiBold" fontSize={16} style={styles.callButtonText}>
+                Call Driver
+              </CustomText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Full-Screen Image Viewer Modal */}
+      <Modal
+        visible={imageViewerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeImageViewer}
+      >
+        <View style={styles.imageViewerContainer}>
+          <TouchableOpacity 
+            style={styles.imageViewerCloseButton}
+            onPress={closeImageViewer}
+          >
+            <Ionicons name="close" size={RFValue(30)} color="#FFFFFF" />
+          </TouchableOpacity>
+          
+          {selectedImage && (
+            <View style={styles.fullImageContainer}>
+              <Image 
+                source={{ uri: selectedImage }} 
+                style={styles.fullScreenImage}
+                resizeMode="contain"
+                onLoadStart={() => setFullImageLoading(true)}
+                onLoad={() => setFullImageLoading(false)}
+                onError={() => setFullImageLoading(false)}
               />
+              {fullImageLoading && (
+                <View style={styles.fullImageLoaderContainer}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+              )}
             </View>
           )}
-
-          <TouchableOpacity style={styles.callButton}>
-            <Ionicons name="call" size={RFValue(18)} color="#fff" />
-            <CustomText fontFamily="SemiBold" fontSize={16} style={styles.callButtonText}>
-              Call Driver
-            </CustomText>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+          
+          <TouchableOpacity 
+            style={styles.imageViewerBackground}
+            onPress={closeImageViewer}
+            activeOpacity={1}
+          />
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -148,87 +310,296 @@ const DriverDetailsModal: FC<DriverDetailsModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  headerTitle: {
+    color: Colors.text,
   },
   closeButton: {
-    alignSelf: 'flex-end',
-    padding: 5,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
   },
-  headerSection: {
+  scrollContent: {
+    paddingHorizontal: 20,
+  },
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  vehicleIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 10,
+  driverImageContainer: {
+    position: 'relative',
+    marginRight: 16,
   },
-  title: {
+  imageWrapper: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
+  },
+  loaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(240, 240, 240, 0.7)',
+  },
+  driverImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E0E0E0',
+  },
+  driverImagePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullImageContainer: {
+    position: 'relative',
+    width: screenWidth,
+    height: screenHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImageLoaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  driverBasicInfo: {
+    flex: 1,
+  },
+  driverName: {
     color: Colors.text,
+    marginBottom: 6,
   },
-  driverInfoSection: {
-    marginBottom: 20,
-  },
-  infoRow: {
+  ratingContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 15,
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  icon: {
-    marginRight: 15,
-    marginTop: 3,
-    width: 20,
-    textAlign: 'center',
-  },
-  label: {
+  ratingText: {
     color: Colors.text,
+    marginLeft: 4,
+  },
+  experienceText: {
+    color: '#666',
+    marginLeft: 8,
+  },
+  statusBadge: {
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusText: {
+    color: '#4CAF50',
+  },
+  vehicleSection: {
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: Colors.text,
+    marginLeft: 8,
+  },
+  vehicleCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  vehicleImage: {
+    width: 60,
+    height: 60,
+    marginRight: 16,
+    resizeMode: 'contain',
+  },
+  vehicleDetails: {
+    flex: 1,
+  },
+  vehicleType: {
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  vehicleModel: {
+    color: '#666',
     marginBottom: 2,
   },
-  value: {
+  vehicleColor: {
     color: '#666',
+    marginBottom: 8,
   },
-  ratingsButton: {
+  plateNumberContainer: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  plateNumber: {
+    color: Colors.text,
+    letterSpacing: 1,
+  },
+  contactSection: {
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  contactCard: {
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  contactInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  contactLabel: {
+    color: '#666',
+    marginBottom: 2,
+  },
+  contactValue: {
+    color: Colors.text,
+  },
+  ratingsSection: {
+    paddingVertical: 20,
+  },
+  ratingsToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F5F5F5',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
+    backgroundColor: '#F8F9FA',
+    padding: 16,
+    borderRadius: 12,
   },
-  ratingsButtonContent: {
+  ratingsToggleContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  ratingsButtonText: {
+  ratingsToggleText: {
     color: Colors.primary,
-    marginLeft: 10,
+    marginLeft: 8,
   },
-  ratingsContainer: {
-    marginBottom: 20,
+  ratingsContent: {
+    marginTop: 12,
+  },
+  actionButtons: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   callButton: {
     backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 10,
-    marginBottom: 30,
+    padding: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   callButtonText: {
     color: '#fff',
-    marginLeft: 10,
+    marginLeft: 8,
+  },
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1000,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: screenWidth,
+    height: screenHeight,
+    zIndex: 999,
+    backgroundColor: 'transparent',
+  },
+  imageViewerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 998,
   },
 });
 

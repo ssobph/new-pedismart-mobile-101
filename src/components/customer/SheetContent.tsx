@@ -9,9 +9,9 @@ import { commonStyles } from "@/styles/commonStyles";
 import ProfileModal from "./ProfileModal";
 
 const cubes = [
-  { name: "Bike", imageUri: require("@/assets/icons/bike.png") },
-  { name: "Auto", imageUri: require("@/assets/icons/auto.png") },
-  { name: "Cab Economy", imageUri: require("@/assets/icons/cab.png") },
+  { name: "Single", imageUri: require("@/assets/icons/bike.png") },
+  { name: "Tricycle", imageUri: require("@/assets/icons/auto.png") },
+  { name: "Cab ", imageUri: require("@/assets/icons/cab.png") },
  // { name: "Parcel", imageUri: require("@/assets/icons/parcel.png") },
   { name: "Cab Premium", imageUri: require("@/assets/icons/cab_premium.png") },
 ];

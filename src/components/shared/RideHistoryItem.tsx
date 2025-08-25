@@ -38,12 +38,11 @@ interface RideHistoryItemProps {
 
 const getVehicleIcon = (vehicle: string) => {
   switch (vehicle) {
-    case 'bike':
+    case 'Single Motorcycle':
       return 'bicycle';
-    case 'auto':
+    case 'Tricycle':
       return 'car-sport';
-    case 'cabEconomy':
-    case 'cabPremium':
+    case 'Cab':
       return 'car';
     default:
       return 'car';
@@ -111,14 +110,12 @@ const RideHistoryItem: React.FC<RideHistoryItemProps> = ({ ride, onPress, isRide
   // Format vehicle name for display
   const getVehicleName = (vehicle: string) => {
     switch (vehicle) {
-      case 'bike':
-        return 'Bike';
-      case 'auto':
-        return 'Auto';
-      case 'cabEconomy':
-        return 'Cab Economy';
-      case 'cabPremium':
-        return 'Cab Premium';
+      case 'Single Motorcycle':
+        return 'Single Motorcycle';
+      case 'Tricycle':
+        return 'Tricycle';
+      case 'Cab':
+        return 'Cab';
       default:
         return vehicle;
     }

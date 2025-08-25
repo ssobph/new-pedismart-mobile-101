@@ -1,4 +1,4 @@
-import { View, Text, Alert } from "react-native";
+import { View, Text, Alert, ActivityIndicator } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useRiderStore } from "@/store/riderStore";
 import { useWS } from "@/service/WSProvider";
@@ -11,12 +11,15 @@ import RiderLiveTracking from "@/components/rider/RiderLiveTracking";
 import { updateRideStatus } from "@/service/rideService";
 import RiderActionButton from "@/components/rider/RiderActionButton";
 import OtpInputModal from "@/components/rider/OtpInputModal";
+import CustomText from "@/components/shared/CustomText";
 
 export default function LiveRide() {
   const [isOtpModalVisible, setOtpModalVisible] = useState(false);
   const { setLocation, location, setOnDuty } = useRiderStore();
   const { emit, on, off } = useWS();
   const [rideData, setRideData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const route = useRoute() as any;
   const params = route?.params || {};
   const id = params.id;
@@ -79,21 +82,30 @@ export default function LiveRide() {
       emit("subscribeRide", id);
 
       on("rideData", (data) => {
+        console.log('Received ride data:', data);
         setRideData(data);
+        setIsLoading(false);
+        setError(null);
       });
 
       on("rideCanceled", (error) => {
-        console.log("Ride error:", error);
+        console.log("Ride canceled:", error);
+        setError('Ride was canceled');
+        setIsLoading(false);
         resetAndNavigate("/rider/home");
         Alert.alert("Ride Canceled");
       });
 
       on("rideUpdate", (data) => {
+        console.log('Received ride update:', data);
         setRideData(data);
+        setError(null);
       });
 
       on("error", (error) => {
-        console.log("Ride error:", error);
+        console.error("Ride error:", error);
+        setError('Failed to load ride data');
+        setIsLoading(false);
         resetAndNavigate("/rider/home");
         Alert.alert("Oh Dang! There was an error");
       });
@@ -101,6 +113,8 @@ export default function LiveRide() {
 
     return () => {
       off("rideData");
+      off("rideUpdate");
+      off("rideCanceled");
       off("error");
     };
   }, [id, emit, on, off]);
@@ -109,23 +123,33 @@ export default function LiveRide() {
     <View style={rideStyles.container}>
       <StatusBar style="light" backgroundColor="orange" translucent={false} />
 
-      {rideData && (
+      {rideData ? (
         <RiderLiveTracking
-          status={rideData?.status}
+          status={rideData?.status || 'UNKNOWN'}
           drop={{
-            latitude: parseFloat(rideData?.drop.latitude),
-            longitude: parseFloat(rideData?.drop.longitude),
+            latitude: rideData?.drop?.latitude ? parseFloat(rideData.drop.latitude) : null,
+            longitude: rideData?.drop?.longitude ? parseFloat(rideData.drop.longitude) : null,
           }}
           pickup={{
-            latitude: parseFloat(rideData?.pickup.latitude),
-            longitude: parseFloat(rideData?.pickup.longitude),
+            latitude: rideData?.pickup?.latitude ? parseFloat(rideData.pickup.latitude) : null,
+            longitude: rideData?.pickup?.longitude ? parseFloat(rideData.pickup.longitude) : null,
           }}
           rider={{
-            latitude: location?.latitude,
-            longitude: location?.longitude,
-            heading: location?.heading,
+            latitude: location?.latitude || null,
+            longitude: location?.longitude || null,
+            heading: location?.heading || 0,
           }}
         />
+      ) : isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
+          <ActivityIndicator size="large" color="orange" />
+          <CustomText fontSize={14} style={{ marginTop: 10, color: '#666' }}>Loading ride data...</CustomText>
+        </View>
+      ) : (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
+          <CustomText fontSize={14} style={{ color: '#666' }}>No ride data available</CustomText>
+          {error && <CustomText fontSize={12} style={{ color: 'red', marginTop: 10 }}>{error}</CustomText>}
+        </View>
       )}
 
       <RiderActionButton

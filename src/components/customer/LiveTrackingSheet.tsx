@@ -8,7 +8,7 @@ import { vehicleIcons } from "@/utils/mapUtils";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { resetAndNavigate } from "@/utils/Helpers";
 
-type VehicleType = "bike" | "auto" | "cabEconomy" | "cabPremium";
+type VehicleType = "Single Motorcycle" | "Tricycle" | "Cab";
 
 interface RideItem {
   _id: string;
