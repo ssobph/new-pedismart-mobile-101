@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "PediSmart",
-    "slug": "rideapp",
+    "slug": "pedismartapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/pedismart_logo.png",
@@ -67,8 +67,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "7a34fec4-996f-4c00-8eda-660d82dc2999"
+        "projectId": "623a0c4d-3df7-42c4-9bd1-b66a97fd5e77"
       }
-    }
+    },
+    "owner": "jastine-hernan"
   }
 }
