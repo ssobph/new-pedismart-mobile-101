@@ -89,7 +89,7 @@ const SheetContent = () => {
 
       <View style={uiStyles.bannerContainer}>
         <Image
-          source={require("@/assets/images/ecoride_footer.png")}
+          source={require("@/assets/images/pedismart_footer.png")}
           style={uiStyles.banner}
         />
       </View>
