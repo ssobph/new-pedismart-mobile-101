@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fankarwanta.rideapp",
+      "bundleIdentifier": "com.jastinehernan.pedismartapp",
       "config": {
         "googleMapsApiKey": "AIzaSyAJEayMulsZ_LDps2fKN22Q-ED2f3BwGIw"
       }
@@ -26,7 +26,7 @@
           "apiKey": "AIzaSyAJEayMulsZ_LDps2fKN22Q-ED2f3BwGIw"
         }
       },
-      "package": "com.fankarwanta.rideapp",
+      "package": "com.jastinehernan.pedismartapp",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/pedismart_logo.png",
