@@ -1191,7 +1191,7 @@ export default function Auth() {
       >
         <View style={commonStyles.flexRowBetween}>
           <Image
-            source={require("@/assets/images/ecoride_logo1.png")}
+            source={require("@/assets/images/pedismart_logo.png")}
             style={authStyles.logo}
           />
           <TouchableOpacity style={authStyles.flexRowGap}>
@@ -1228,7 +1228,7 @@ export default function Auth() {
               { textAlign: "left", marginBottom: 15 },
             ]}
           >
-            By continuing, you agree to the terms and privacy policy of Ecoride App
+            By continuing, you agree to the terms and privacy policy of PediSmart App
           </CustomText>
 
           <CustomButton

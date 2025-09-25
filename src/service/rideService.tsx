@@ -152,3 +152,14 @@ export const getMyRatings = async () => {
     return { count: 0, averageRating: 0, ratings: [] };
   }
 };
+
+export const cancelRideOffer = async (rideId: string) => {
+  try {
+    const res = await api.delete(`/ride/cancel/${rideId}`);
+    return true;
+  } catch (error: any) {
+    Alert.alert("Error", "Failed to cancel ride offer");
+    console.log("Error: Cancel Ride Offer ", error);
+    return false;
+  }
+};

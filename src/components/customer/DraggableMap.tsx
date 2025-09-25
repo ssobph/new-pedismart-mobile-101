@@ -1,29 +1,24 @@
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import React, { FC, memo, useEffect, useRef, useState } from "react";
 import { useIsFocused } from "@react-navigation/native";
-import WebViewMap, { WebViewMapRef } from "@/components/shared/WebViewMap";
+import MapView, { Marker, Region } from "react-native-maps";
 import { useUserStore } from "@/store/userStore";
 import { useWS } from "@/service/WSProvider";
-import { customMapStyle, initialRegion } from "@/utils/CustomMap";
+import { customMapStyle, indiaIntialRegion } from "@/utils/CustomMap";
 import { reverseGeocode } from "@/utils/mapUtils";
 import haversine from "haversine-distance";
 import { mapStyles } from "@/styles/mapStyles";
 import { FontAwesome6, MaterialCommunityIcons } from "@expo/vector-icons";
 import { RFValue } from "react-native-responsive-fontsize";
 import * as Location from "expo-location";
-import DriverDetailsModal from "./DriverDetailsModal";
 
 const DraggableMap: FC<{ height: number }> = ({ height }) => {
   const isFocused = useIsFocused();
   const [markers, setMarkers] = useState<any>([]);
-  const mapRef = useRef<WebViewMapRef>(null);
+  const mapRef = useRef<MapView>(null);
   const { setLocation, location, outOfRange, setOutOfRange } = useUserStore();
   const { emit, on, off } = useWS();
   const MAX_DISTANCE_THRESHOLD = 10000;
-  const [selectedDriver, setSelectedDriver] = useState<any>(null);
-  const [driverModalVisible, setDriverModalVisible] = useState(false);
-  const [selectedDestination, setSelectedDestination] = useState<any>(null);
-  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -33,7 +28,10 @@ const DraggableMap: FC<{ height: number }> = ({ height }) => {
           try {
             const location = await Location.getCurrentPositionAsync({});
             const { latitude, longitude } = location.coords;
-            mapRef.current?.fitToCoordinates([{ latitude, longitude }]);
+            mapRef.current?.fitToCoordinates([{ latitude, longitude }], {
+              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+              animated: true,
+            });
             const newRegion = {
               latitude,
               longitude,
@@ -43,80 +41,68 @@ const DraggableMap: FC<{ height: number }> = ({ height }) => {
             handleRegionChangeComplete(newRegion);
           } catch (error) {
             console.error("Error getting current location:", error);
-            // Fallback to default location (Manila, Philippines) for testing
-            const fallbackRegion = {
-              latitude: 14.5995,
-              longitude: 120.9842,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            };
-            console.log("Using fallback location:", fallbackRegion);
-            handleRegionChangeComplete(fallbackRegion);
           }
         } else {
           console.log("Permission to access location was denied");
-          // Fallback to default location for testing
-          const fallbackRegion = {
-            latitude: 14.5995,
-            longitude: 120.9842,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          };
-          console.log("Using fallback location due to permission denial:", fallbackRegion);
-          handleRegionChangeComplete(fallbackRegion);
         }
       }
     })();
   }, [mapRef, isFocused]);
 
+  // REALTIME NEARBY RIDERS
+
+  // useEffect(() => {
+  //   if (location?.latitude && location?.longitude && isFocused) {
+  //     emit("subscribeToZone", {
+  //       latitude: location.latitude,
+  //       longitude: location.longitude,
+  //     });
+
+  //     on("nearbyRiders", (riders: any[]) => {
+  //       const updatedMarkers = riders.map((rider) => ({
+  //         id: rider.id,
+  //         latitude: rider.coords.latitude,
+  //         longitude: rider.coords.longitude,
+  //         type: "rider",
+  //         rotation: rider.coords.heading,
+  //         visible: true,
+  //       }));
+  //       setMarkers(updatedMarkers);
+  //     });
+  //   }
+
+  //   return () => {
+  //     off("nearbyriders");
+  //   };
+  // }, [location, emit, on, off, isFocused]);
+
+  // SIMULATING NEARBY RIDERS
+
+  const generateRandomMarkers = () => {
+    if (!location?.latitude || !location?.longitude || outOfRange) return;
+
+    const types = ["bike", "auto", "cab"];
+    const newMarkers = Array.from({ length: 20 }, (_, index) => {
+      const randomType = types[Math.floor(Math.random() * types.length)];
+      const randomRotation = Math.floor(Math.random() * 360);
+
+      return {
+        id: index,
+        latitude: location?.latitude + (Math.random() - 0.5) * 0.01,
+        longitude: location?.longitude + (Math.random() - 0.5) * 0.01,
+        type: randomType,
+        rotation: randomRotation,
+        visible: true,
+      };
+    });
+    setMarkers(newMarkers);
+  };
+
   useEffect(() => {
-    console.log('DraggableMap location effect triggered:', { location, isFocused });
-    
-    if (location?.latitude && location?.longitude && isFocused) {
-      console.log('Emitting subscribeToZone with:', {
-        latitude: location.latitude,
-        longitude: location.longitude,
-      });
-      
-      emit("subscribeToZone", {
-        latitude: location.latitude,
-        longitude: location.longitude,
-      });
+    generateRandomMarkers();
+  }, [location]);
 
-      on("nearbyriders", (riders: any[]) => {
-        console.log('Received nearby riders:', riders); // Debug log
-        console.log('Raw rider data:', JSON.stringify(riders, null, 2));
-        
-        const updatedMarkers = riders.map((rider) => {
-          const marker = {
-            id: rider.socketId || rider.riderId || Math.random().toString(),
-            riderId: rider.riderId,
-            latitude: rider.coords?.latitude || rider.latitude,
-            longitude: rider.coords?.longitude || rider.longitude,
-            vehicleType: rider.vehicleType || "Tricycle", // Use vehicleType from server
-            type: rider.vehicleType || rider.type || "auto", // Keep for backward compatibility
-            rotation: rider.coords?.heading || rider.heading || 0,
-            visible: true,
-            driverInfo: rider.driverInfo || rider,
-          };
-          console.log('Processed marker:', marker);
-          return marker;
-        });
-        
-        console.log('Updated markers array:', updatedMarkers);
-        console.log('Setting markers with count:', updatedMarkers.length);
-        setMarkers(updatedMarkers);
-      });
-    } else {
-      console.log('Not subscribing to zone - missing location or not focused');
-    }
-
-    return () => {
-      off("nearbyriders");
-    };
-  }, [location, emit, on, off, isFocused]);
-
-  const handleRegionChangeComplete = async (newRegion: any) => {
+  const handleRegionChangeComplete = async (newRegion: Region) => {
     const address = await reverseGeocode(
       newRegion.latitude,
       newRegion.longitude
@@ -144,136 +130,73 @@ const DraggableMap: FC<{ height: number }> = ({ height }) => {
   const handleGpsButtonPress = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({});
-        const { latitude, longitude } = location.coords;
-        mapRef.current?.animateToRegion({
-          latitude,
-          longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01
-        });
-      } else {
-        console.log("Location permission denied");
-      }
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+      mapRef.current?.fitToCoordinates([{ latitude, longitude }], {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
+      const address = await reverseGeocode(latitude, longitude);
+      setLocation({ latitude, longitude, address });
     } catch (error) {
       console.error("Error getting location:", error);
     }
   };
 
-  const handleMarkerPress = (marker: any) => {
-    console.log('Marker pressed:', marker); // Debug log
-    
-    if (marker.riderId || marker.id) {
-      const riderId = marker.riderId || marker.id;
-      console.log('Fetching driver details for riderId:', riderId); // Debug log
-      
-      // Clear any existing timeout
-      if (fallbackTimeoutRef.current) {
-        clearTimeout(fallbackTimeoutRef.current);
-      }
-      
-      // Fetch driver details
-      emit("getDriverDetails", { riderId });
-      
-      // Set up one-time listener for driver details response
-      const handleDriverDetailsResponse = (driverDetails: any) => {
-        console.log('Received driver details:', driverDetails); // Debug log
-        
-        // Clear fallback timeout since we got response
-        if (fallbackTimeoutRef.current) {
-          clearTimeout(fallbackTimeoutRef.current);
-        }
-        
-        setSelectedDriver({
-          ...driverDetails,
-          vehicleType: driverDetails.vehicleType || marker.vehicleType || marker.type || 'Tricycle',
-          riderId: riderId,
-        });
-        setDriverModalVisible(true);
-        
-        // Remove the listener after receiving the response
-        off("driverDetailsResponse");
-      };
-      
-      on("driverDetailsResponse", handleDriverDetailsResponse);
-      
-      // Fallback: If no WebSocket response, show basic info
-      fallbackTimeoutRef.current = setTimeout(() => {
-        console.log('No WebSocket response, showing basic info'); // Debug log
-        setSelectedDriver({
-          firstName: marker.title || 'Driver',
-          lastName: '',
-          phone: 'Not available',
-          vehicleType: marker.type || 'auto',
-          riderId: riderId,
-          _id: riderId,
-        });
-        setDriverModalVisible(true);
-        off("driverDetailsResponse"); // Clean up listener
-      }, 3000); // 3 second timeout
-    } else {
-      console.log('No riderId found in marker:', marker); // Debug log
-    }
-  };
-
-  const closeDriverModal = () => {
-    setDriverModalVisible(false);
-    setSelectedDriver(null);
-    // Clean up any remaining listeners and timeouts
-    off("driverDetailsResponse");
-    if (fallbackTimeoutRef.current) {
-      clearTimeout(fallbackTimeoutRef.current);
-      fallbackTimeoutRef.current = null;
-    }
-  };
-
-  const handlePinLocationSelect = (pinLocation: any) => {
-    console.log('Pin location selected for destination:', pinLocation);
-    setSelectedDestination(pinLocation);
-    
-    // You can add additional logic here to handle the destination selection
-    // For example, setting it as the drop location in a booking flow
-    alert(`Selected destination: ${pinLocation.name}\nCategory: ${pinLocation.category}\nAddress: ${pinLocation.address}`);
-  };
-
-
   return (
     <View style={{ height: height, width: "100%" }}>
-      <WebViewMap
+      <MapView
         ref={mapRef}
+        maxZoomLevel={16}
+        minZoomLevel={12}
+        pitchEnabled={false}
+        onRegionChangeComplete={handleRegionChangeComplete}
         style={{ flex: 1 }}
-        initialRegion={initialRegion}
-        markers={(() => {
-          const filteredMarkers = markers
-            ?.filter(
-              (marker: any) =>
-                marker?.latitude && marker.longitude
-            )
-            .map((marker: any, index: number) => ({
-              id: marker.id || index.toString(),
-              riderId: marker.riderId, // Preserve riderId for modal
-              latitude: marker.latitude,
-              longitude: marker.longitude,
-              rotation: marker.rotation || 0,
-              vehicleType: marker.vehicleType || 'Tricycle', // Pass vehicleType to WebViewMap
-              type: marker.type || 'auto', // Keep for backward compatibility
-              title: marker.driverInfo?.name || `Driver ${index + 1}`,
-              icon: marker.vehicleType || marker.type || 'auto',
-              driverInfo: marker.driverInfo // Preserve driver info
-            }));
-          
-          console.log('Final markers passed to WebViewMap:', filteredMarkers);
-          console.log('Markers count being passed:', filteredMarkers?.length || 0);
-          return filteredMarkers;
-        })()}
-        showUserLocation={true}
-        showPinLocations={true}
+        initialRegion={indiaIntialRegion}
+        showsMyLocationButton={false}
+        showsCompass={false}
+        showsIndoors={false}
+        showsIndoorLevelPicker={false}
+        showsTraffic={false}
+        showsScale={false}
+        showsBuildings={false}
+        showsPointsOfInterest={false}
         customMapStyle={customMapStyle}
-        onRegionChange={handleRegionChangeComplete}
-        onMarkerPress={handleMarkerPress}
-        onPinLocationSelect={handlePinLocationSelect}
-      />
+        showsUserLocation={true}
+      >
+        {markers
+          ?.filter(
+            (marker: any) =>
+              marker?.latitude && marker.longitude && marker.visible
+          )
+          .map((marker: any, index: number) => (
+            <Marker
+              key={index}
+              zIndex={index + 1}
+              flat
+              anchor={{ x: 0.5, y: 0.5 }}
+              coordinate={{
+                latitude: marker.latitude,
+                longitude: marker?.longitude,
+              }}
+            >
+              <View
+                style={{ transform: [{ rotate: `${marker?.rotation}deg` }] }}
+              >
+                <Image
+                  source={
+                    marker.type === "bike"
+                      ? require("@/assets/icons/bike_marker.png")
+                      : marker.type === "auto"
+                      ? require("@/assets/icons/auto_marker.png")
+                      : require("@/assets/icons/cab_marker.png")
+                  }
+                  style={{ height: 40, width: 40, resizeMode: "contain" }}
+                />
+              </View>
+            </Marker>
+          ))}
+      </MapView>
 
       <View style={mapStyles.centerMarkerContainer}>
         <Image
@@ -297,12 +220,6 @@ const DraggableMap: FC<{ height: number }> = ({ height }) => {
           <FontAwesome6 name="road-circle-exclamation" size={24} color="red" />
         </View>
       )}
-
-      <DriverDetailsModal
-        visible={driverModalVisible}
-        driverDetails={selectedDriver}
-        onClose={closeDriverModal}
-      />
     </View>
   );
 };

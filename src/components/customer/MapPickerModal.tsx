@@ -8,8 +8,8 @@ import {
   Image,
 } from "react-native";
 import React, { FC, memo, useEffect, useRef, useState, useCallback, useMemo } from "react";
+import MapView from "react-native-maps";
 import { modalStyles } from "@/styles/modalStyles";
-import WebViewMap, { WebViewMapRef } from "@/components/shared/WebViewMap";
 import { useUserStore } from "@/store/userStore";
 import {
   getLatLong,
@@ -20,7 +20,7 @@ import LocationItem from "./LocationItem";
 import * as Location from "expo-location";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { RFValue } from "react-native-responsive-fontsize";
-import { customMapStyle, initialRegion } from "@/utils/CustomMap";
+import { customMapStyle, indiaIntialRegion } from "@/utils/CustomMap";
 import { mapStyles } from "@/styles/mapStyles";
 
 interface MapPickerModalProps {
@@ -42,7 +42,7 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
   title,
   onSelectLocation,
 }) => {
-  const mapRef = useRef<WebViewMapRef>(null);
+  const mapRef = useRef<MapView>(null);
   const [text, setText] = useState("");
   const { location } = useUserStore();
   const [address, setAddress] = useState("");
@@ -78,22 +78,32 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
 
   useEffect(() => {
     if (selectedLocation?.latitude) {
+      console.log('Setting selected location:', selectedLocation); // Debug log
       setAddress(selectedLocation?.address);
-      setRegion({
+      const newRegion = {
         latitude: selectedLocation?.latitude,
         longitude: selectedLocation?.longitude,
-        latitudeDelta: 0.5,
-        longitudeDelta: 0.5,
-      });
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setRegion(newRegion);
 
-      mapRef?.current?.fitToCoordinates([
-        {
-          latitude: selectedLocation?.latitude,
-          longitude: selectedLocation?.longitude,
-        },
-      ]);
+      // Animate to the selected location
+      setTimeout(() => {
+        mapRef?.current?.animateToRegion(newRegion, 1000);
+      }, 500);
+    } else {
+      // Initialize with user's current location or default
+      const defaultRegion = {
+        latitude: location?.latitude ?? indiaIntialRegion?.latitude,
+        longitude: location?.longitude ?? indiaIntialRegion?.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      console.log('Setting default region:', defaultRegion); // Debug log
+      setRegion(defaultRegion);
     }
-  }, [selectedLocation, mapRef]);
+  }, [selectedLocation, location, mapRef]);
 
   const addLocation = useCallback(async (place_id: string) => {
     try {
@@ -113,7 +123,10 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
         mapRef?.current?.fitToCoordinates([{
           latitude: data.latitude,
           longitude: data.longitude,
-        }]);
+        }], {
+          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+          animated: true,
+        });
       }
     } catch (error) {
       console.error('Error adding location:', error);
@@ -133,14 +146,9 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
 
   const handleRegionChangeComplete = useCallback(async (newRegion: any) => {
     try {
-      // Only update if the region has changed significantly (more than ~10 meters)
-      const threshold = 0.0001;
-      if (region && 
-          Math.abs(region.latitude - newRegion.latitude) < threshold &&
-          Math.abs(region.longitude - newRegion.longitude) < threshold) {
-        return; // Skip update if change is minimal
-      }
+      console.log('Region changed:', newRegion); // Debug log
       
+      // Update region immediately for responsive UI
       setRegion(newRegion);
       setIsLoadingAddress(true);
       
@@ -152,10 +160,12 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
       // Debounce address lookup to prevent excessive API calls
       addressTimeoutRef.current = setTimeout(async () => {
         try {
+          console.log('Getting address for:', newRegion.latitude, newRegion.longitude); // Debug log
           const address = await reverseGeocode(
             newRegion?.latitude,
             newRegion?.longitude
           );
+          console.log('Address found:', address); // Debug log
           setAddress(address || "Address not found");
         } catch (error) {
           console.error('Error getting address:', error);
@@ -163,34 +173,45 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
         } finally {
           setIsLoadingAddress(false);
         }
-      }, 500);
+      }, 800); // Increased debounce time for better UX
     } catch (error) {
       console.error('Error in region change:', error);
       setIsLoadingAddress(false);
     }
-  }, [region]);
+  }, []);
+
+  const handleRegionChange = useCallback(() => {
+    // Show immediate feedback when user starts dragging
+    if (!isLoadingAddress) {
+      setAddress("Tap and drag to select location");
+    }
+  }, [isLoadingAddress]);
 
   const handleGpsButtonPress = useCallback(async () => {
     try {
       setIsLoadingAddress(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
-        const currentLocation = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
+        try {
+          const currentLocation = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          
+          const newRegion = {
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+          
+          setRegion(newRegion);
+          mapRef.current?.fitToCoordinates([{
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+        }], {
+          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+          animated: true,
         });
-        
-        const newRegion = {
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        };
-        
-        setRegion(newRegion);
-        mapRef.current?.fitToCoordinates([{
-          latitude: currentLocation.coords.latitude,
-          longitude: currentLocation.coords.longitude,
-        }]);
         
         // Get address for current location
         const address = await reverseGeocode(
@@ -198,11 +219,41 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
           currentLocation.coords.longitude
         );
         setAddress(address || "Current location");
+        } catch (locationError) {
+          console.log("Failed to get current location, using fallback:", locationError);
+          // Use fallback location (Manila, Philippines)
+          const fallbackRegion = {
+            latitude: 14.5995,
+            longitude: 120.9842,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          };
+          setRegion(fallbackRegion);
+          setAddress("Manila, Philippines (Fallback)");
+        }
       } else {
-        console.log("Location permission denied");
+        console.log("Location permission denied, using fallback");
+        // Use fallback location
+        const fallbackRegion = {
+          latitude: 14.5995,
+          longitude: 120.9842,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(fallbackRegion);
+        setAddress("Manila, Philippines (Fallback)");
       }
     } catch (error) {
-      console.error("Error getting location:", error);
+      console.log("Error getting location, using fallback:", error);
+      // Use fallback location
+      const fallbackRegion = {
+        latitude: 14.5995,
+        longitude: 120.9842,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setRegion(fallbackRegion);
+      setAddress("Manila, Philippines (Fallback)");
     } finally {
       setIsLoadingAddress(false);
     }
@@ -269,24 +320,36 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
         ) : (
           <>
             <View style={{ flex: 1, width: "100%" }}>
-              <WebViewMap
+              <MapView
                 ref={mapRef}
                 style={{ flex: 1 }}
-                initialRegion={{
-                  latitude:
-                    region?.latitude ??
-                    location?.latitude ??
-                    initialRegion?.latitude,
-                  longitude:
-                    region?.longitude ??
-                    location?.longitude ??
-                    initialRegion?.longitude,
-                  latitudeDelta: 0.5,
-                  longitudeDelta: 0.5,
+                region={region ? {
+                  latitude: region.latitude,
+                  longitude: region.longitude,
+                  latitudeDelta: region.latitudeDelta || 0.01,
+                  longitudeDelta: region.longitudeDelta || 0.01,
+                } : {
+                  latitude: location?.latitude ?? indiaIntialRegion?.latitude,
+                  longitude: location?.longitude ?? indiaIntialRegion?.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
                 }}
-                showUserLocation={true}
-                onRegionChange={handleRegionChangeComplete}
+                showsMyLocationButton={false}
+                showsCompass={false}
+                showsIndoors={false}
+                showsIndoorLevelPicker={false}
+                showsTraffic={false}
+                showsScale={false}
+                showsBuildings={false}
+                showsPointsOfInterest={false}
                 customMapStyle={customMapStyle}
+                showsUserLocation={true}
+                scrollEnabled={true}
+                zoomEnabled={true}
+                pitchEnabled={false}
+                rotateEnabled={false}
+                onRegionChange={handleRegionChange}
+                onRegionChangeComplete={handleRegionChangeComplete}
               />
               <View style={mapStyles.centerMarkerContainer}>
                 <Image
@@ -316,15 +379,20 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
               </Text>
               <View style={modalStyles.buttonContainer}>
                 <TouchableOpacity
-                  style={modalStyles.button}
+                  style={[
+                    modalStyles.button,
+                    (!region?.latitude || !region?.longitude || isLoadingAddress) && 
+                    { backgroundColor: '#ccc' }
+                  ]}
                   disabled={!region?.latitude || !region?.longitude || isLoadingAddress}
                   onPress={() => {
-                    if (region?.latitude && region?.longitude && address) {
+                    console.log('Set Address pressed:', { region, address }); // Debug log
+                    if (region?.latitude && region?.longitude) {
                       onSelectLocation({
                         type: title,
                         latitude: region.latitude,
                         longitude: region.longitude,
-                        address: address,
+                        address: address || "Selected location",
                       });
                       onClose();
                     }

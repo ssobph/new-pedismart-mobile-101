@@ -1,4 +1,4 @@
-// Location Configuration for EcoRide App
+// Location Configuration for PediSmart App
 // This file contains default location settings that can be easily modified
 
 export interface LocationData {

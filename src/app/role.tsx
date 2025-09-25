@@ -16,7 +16,7 @@ const Role = () => {
   return (
     <View style={roleStyles.container}>
       <Image
-        source={require("@/assets/images/ecoride_us_logo2.png")}
+        source={require("@/assets/images/pedismart_logo.png")}
         style={roleStyles.logo}
       />
       <CustomText fontFamily="Medium" variant="h6">
