@@ -34,7 +34,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+rideapp</string>
+          <string>exp+pedismartapp</string>
         </array>
       </dict>
     </array>
