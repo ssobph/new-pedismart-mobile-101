@@ -28,13 +28,13 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>myapp</string>
-          <string>com.jastinehernan.rideapp</string>
+          <string>com.fankarwanta.pedismartapp</string>
         </array>
       </dict>
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+rideapp</string>
+          <string>exp+pedismartapp</string>
         </array>
       </dict>
     </array>
