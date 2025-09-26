@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>myapp</string>
-          <string>com.jastinehernan.rideapp</string>
+          <string></string>
         </array>
       </dict>
       <dict>

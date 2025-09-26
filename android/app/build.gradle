@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.jastinehernan.pedismartapp'
+    namespace 'com.fankarwanta.pedismartapp'
     defaultConfig {
-        applicationId 'com.jastinehernan.pedismartapp'
+        applicationId 'com.fankarwanta.pedismartapp'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

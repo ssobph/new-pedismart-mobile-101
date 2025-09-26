@@ -30,7 +30,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="myapp"/>
-        <data android:scheme="com.jastinehernan.pedismartapp"/>
+        <data android:scheme="com.fankarwanta.pedismartapp"/>
         <data android:scheme="exp+pedismartapp"/>
       </intent-filter>
     </activity>

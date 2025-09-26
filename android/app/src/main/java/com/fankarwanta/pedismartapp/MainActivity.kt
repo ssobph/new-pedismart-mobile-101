@@ -1,4 +1,4 @@
-package com.jastinehernan.rideapp
+package com.fankarwanta.pedismartapp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
