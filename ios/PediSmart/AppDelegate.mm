@@ -14,7 +14,7 @@
 {
 // @generated begin react-native-maps-init - expo prebuild (DO NOT MODIFY) sync-393d23fc715e6f3dc9139968d7a40895b51f7388
 #if __has_include(<GoogleMaps/GoogleMaps.h>)
-  [GMSServices provideAPIKey:@"AIzaSyAJEayMulsZ_LDps2fKN22Q-ED2f3BwGIw"];
+  [GMSServices provideAPIKey:@"AIzaSyDUHFKNJiuL4sw0CdlUF-O2xVlaYeKwLpo"];
 #endif
 // @generated end react-native-maps-init
   self.moduleName = @"main";

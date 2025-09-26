@@ -25,6 +25,10 @@ import { Platform } from "react-native";
 // export const BASE_URL = 'http://192.168.100.171:3000';
 // export const SOCKET_URL = 'ws://192.168.100.171:3000';
 
+// ( STATS WIFI )
+export const BASE_URL = 'http://192.168.137.218:3000';
+export const SOCKET_URL = 'ws://192.168.137.218:3000';
+
 // Cafe Wifi - PLDTHOMEFIBRw4c2
-export const BASE_URL = 'http://192.168.1.230:3000';
-export const SOCKET_URL = 'ws://192.168.1.230:3000';
+// export const BASE_URL = 'http://192.168.1.230:3000';
+// export const SOCKET_URL = 'ws://192.168.1.230:3000';
